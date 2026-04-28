@@ -1,0 +1,36 @@
+{
+  "name": "omniplan-js",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev -w packages/server",
+    "dev:web": "npm run dev -w packages/web",
+    "dev:mcp": "npm run dev -w packages/mcp",
+    "build:shared": "npm run build -w packages/shared",
+    "build:server": "npm run build -w packages/server",
+    "build:web": "npm run build -w packages/web",
+    "build:mcp": "npm run build -w packages/mcp",
+    "build": "npm run build:shared && npm run build:server && npm run build:web && npm run build:mcp",
+    "lint": "eslint packages/*/src --ext .ts,.tsx",
+    "format": "prettier --write 'packages/*/src/**/*.{ts,tsx,css}'",
+    "format:check": "prettier --check 'packages/*/src/**/*.{ts,tsx,css}'",
+    "typecheck": "tsc --build",
+    "db:migrate": "npm run db:migrate -w packages/server",
+    "db:seed": "npm run db:seed -w packages/server",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

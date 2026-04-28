@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    container_name: omniplan-server
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    container_name: omniplan-web
+    ports:
+      - '80:80'
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  mcp:
+    build:
+      context: .
+      dockerfile: packages/mcp/Dockerfile
+    container_name: omniplan-mcp
+    ports:
+      - '3100:3100'
+    environment:
+      - OMNIPLAN_API_URL=http://server:3000
+    depends_on:
+      - server
+    restart: unless-stopped

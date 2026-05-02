@@ -8,7 +8,7 @@ const router = Router();
 
 router.get('/projects/:pid/targets', validateParams(ProjectIdParamSchema), (req, res) => {
   try {
-    const targets = listTargets(req.params.pid);
+    const targets = listTargets(req.params.pid!);
     res.json({ success: true, data: targets });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });
@@ -17,7 +17,7 @@ router.get('/projects/:pid/targets', validateParams(ProjectIdParamSchema), (req,
 
 router.post('/projects/:pid/targets', authRequired, validateParams(ProjectIdParamSchema), validate(CreateTargetSchema), (req, res) => {
   try {
-    const target = createTarget(req.params.pid, req.body);
+    const target = createTarget(req.params.pid!, req.body);
     res.status(201).json({ success: true, data: target });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });
@@ -26,7 +26,7 @@ router.post('/projects/:pid/targets', authRequired, validateParams(ProjectIdPara
 
 router.get('/targets/:id', validateParams(IdParamSchema), (req, res) => {
   try {
-    const target = getTargetStats(req.params.id);
+    const target = getTargetStats(req.params.id!);
     res.json({ success: true, data: target });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });
@@ -36,7 +36,7 @@ router.get('/targets/:id', validateParams(IdParamSchema), (req, res) => {
 router.patch('/targets/:id', authRequired, validateParams(IdParamSchema), validate(PatchBodySchema), (req, res) => {
   try {
     const { changes, expected_version } = req.body;
-    const target = updateTarget(req.params.id, changes, expected_version);
+    const target = updateTarget(req.params.id!, changes, expected_version);
     res.json({ success: true, data: target });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });
@@ -45,7 +45,7 @@ router.patch('/targets/:id', authRequired, validateParams(IdParamSchema), valida
 
 router.delete('/targets/:id', authRequired, validateParams(IdParamSchema), (req, res) => {
   try {
-    deleteTarget(req.params.id);
+    deleteTarget(req.params.id!);
     res.json({ success: true, data: null });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });

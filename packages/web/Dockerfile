@@ -5,6 +5,7 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/web/package.json packages/web/
 RUN npm ci --workspaces --if-present
 COPY packages/shared/src packages/shared/src
+COPY tsconfig.json ./
 COPY packages/shared/tsconfig.json packages/shared/tsup.config.ts packages/shared/
 RUN npm run build -w packages/shared
 COPY packages/web/src packages/web/src
@@ -16,6 +17,7 @@ COPY packages/web/postcss.config.js packages/web/
 RUN npm run build -w packages/web
 
 FROM nginx:alpine
+COPY packages/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

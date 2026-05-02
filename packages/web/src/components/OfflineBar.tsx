@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useWsStore } from '../stores/wsStore';
+import { useAuthStore } from '../stores/authStore';
 
 export function OfflineBar() {
   const [online, setOnline] = useState(navigator.onLine);
   const { connected } = useWsStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     const handleOnline = () => setOnline(true);
@@ -16,7 +18,7 @@ export function OfflineBar() {
     };
   }, []);
 
-  if (online && connected) return null;
+  if (!isAuthenticated || (online && connected)) return null;
 
   return (
     <div className="bg-yellow-500/20 border-b border-yellow-500/30 text-yellow-400 text-center py-1.5 text-sm">

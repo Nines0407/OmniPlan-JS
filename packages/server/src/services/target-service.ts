@@ -36,7 +36,7 @@ export function getTargetStats(id: string): TargetStats {
   const stats = db.prepare('SELECT * FROM target_stats WHERE target_id = ?').get(id) as {
     total_tasks: number; done_tasks: number; completion_rate: number; overdue_tasks: number;
   } | undefined;
-  return { ...target, ...stats };
+  return { ...target, ...stats } as TargetStats;
 }
 
 export function createTarget(projectId: string, data: CreateTargetInput): Target {

@@ -1,0 +1,48 @@
+# Project: OmniPlan-JS - 部署上下文锚点
+
+## 1. 核心真理 (The Core)
+> 这里的逻辑绝对不可动，是系统的灵魂。
+- **架构模式**: monorepo (npm workspaces)，Express + WebSocket 后端，React + Vite 前端，MCP Server AI 入口
+- **关键依赖**: Node.js 22、better-sqlite3（需 python3/make/g++ 编译）、tsx（ESM 运行时）
+- **数据流**: REST/WS → nginx (:80) → 反向代理 → API (:3000)；WebSocket 同路径 `/ws` 经由 nginx Upgrade 头转发
+- **部署拓扑**: `omniplan-web` (nginx) → 代理 `/api` `/ws` → `omniplan-server` (Express + ws)；前端 SPA 静态文件由 nginx 直接提供
+
+## 2. 状态快照 (Latest State)
+> 记录当前系统运行到了哪步，防止回滚进度。
+- **当前版本**: v0.1.0
+- **部署方式**: Docker Compose (server + web + mcp)，已配置 DaoCloud 镜像加速
+- **已修复问题**:
+  - [x] Dockerfile 缺少根 tsconfig.json → 所有 3 个 Dockerfile 已添加 `COPY tsconfig.json ./`
+  - [x] TypeScript `noUncheckedIndexedAccess` 导致 `req.params.x` 类型为 `string | undefined` → 4 个路由文件加 `!` 断言，server tsconfig 排除 `__tests__`
+  - [x] `connection.ts` 导出类型不可命名 → 添加显式类型注解
+  - [x] `target-service.ts` 返回类型不匹配 → 添加 `as TargetStats` 断言
+  - [x] ESM 模块解析失败（tsc 编译后缺 .js 扩展名） → server/mcp Dockerfile 改用 `npx tsx` 运行源码
+  - [x] node_modules 中 @omniplan/shared 软链接缺失 package.json → runner 阶段补充 `COPY shared/package.json`
+  - [x] 数据库未初始化 → 创建 `entrypoint.sh`，启动时自动 migrate + seed（空库时）
+  - [x] WebSocket 连接失败（"重新连接服务器"）→ web nginx 添加 `/ws` 与 `/api` 反向代理配置 (`packages/web/nginx.conf`)
+  - [x] WebSocket 从未被 subscribe → `App.tsx` 根据 token 状态自动触发 `subscribe()`/`unsubscribe()`
+  - [x] OfflineBar 未登录时误显"Reconnecting" → 添加 `isAuthenticated` 守卫，仅在已登录且断连时显示
+- **当前服务状态**:
+  - `omniplan-server` :3000 ✅
+  - `omniplan-web` :80 ✅
+  - `omniplan-mcp` :3100 ✅
+
+## 3. 开发禁令 (Hard Constraints)
+> 明确告诉 AI "不要自作聪明" 的地方。
+- 🚫 **禁止修改根 tsconfig.json 中的 `noUncheckedIndexedAccess: true`** — 这是项目的严格类型检查策略，路由层已通过 `!` 断言适配
+- 🚫 **Dockerfile 不要回到 `node` 运行 dist** — `tsc` 输出的 ESM 缺少 .js 扩展名，生产环境必须用 `tsx` 或 `tsup` 打包
+- 🚫 **禁止删除 entrypoint.sh** — 容器重启时依赖它自动 migrate + seed，否则数据库为空报 500
+- 🚫 **Docker 构建前确保网络能拉取镜像** — 当前依赖 DaoCloud 镜像加速 (`/etc/docker/daemon.json`)，dockerd 需手动启动
+- 🚫 **禁止修改已添加 `!` 断言的 req.params 调用** — 这些断言基于 validateParams 中间件的保证，随意去除会导致 tsc 编译失败
+- 🚫 **禁止删除 nginx.conf 中的 `/ws` 和 `/api` 代理** — 前端 WebSocket 连接 `ws://<host>/ws`，API 请求 `/api/*`，都依赖 nginx 转发到 server:3000
+- 🚫 **禁止移除 App.tsx 中的 WebSocket subscribe 调用** — 这是 WebSocket 连接的唯一入口，移除后 wsStore 永不连接
+- 🚫 **禁止在未登录时处理 WebSocket 事件** — OfflineBar 和 wsStore 都有 isAuthenticated 守卫，不要绕过
+
+## 4. 下一轮指令 (Next Vibe)
+> 给下一轮对话的精准投喂。
+- **目标**: 如后续修改 server 源码新增路由，需在 tsconfig 中排除测试文件、路由中为 req.params 添加 `!` 断言
+- **参考**: 仿照现有 `packages/server/src/routes/*.ts` 中的断言模式
+- **注意**: 
+  - entrypoint.sh 中 seed 逻辑通过 `SELECT COUNT(*) FROM projects` 判断是否空库，新增实体表需同步更新判断逻辑
+  - 如需新增 WebSocket 事件类型，同步更新 `wsStore.ts` 的 `handleWsEvent` switch-case 和 nginx `/ws` 代理
+  - 前端如需新的反向代理路径，在 `packages/web/nginx.conf` 中添加新的 `location` 块

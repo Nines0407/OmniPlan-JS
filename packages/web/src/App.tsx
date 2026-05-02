@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Navbar } from './components/Navbar';
@@ -8,8 +9,21 @@ import { ProjectDetail } from './pages/ProjectDetail';
 import { TaskView } from './pages/TaskView';
 import { Timeline } from './pages/Timeline';
 import { Settings } from './pages/Settings';
+import { useAuthStore } from './stores/authStore';
+import { useWsStore } from './stores/wsStore';
 
 export function App() {
+  const token = useAuthStore((s) => s.token);
+  const { subscribe, unsubscribe } = useWsStore();
+
+  useEffect(() => {
+    if (token) {
+      subscribe();
+    } else {
+      unsubscribe();
+    }
+  }, [token, subscribe, unsubscribe]);
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-surface text-white flex flex-col">

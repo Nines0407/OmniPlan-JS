@@ -24,7 +24,7 @@ router.post('/', authRequired, validate(CreateProjectSchema), (req, res) => {
 
 router.get('/:id', validateParams(IdParamSchema), (req, res) => {
   try {
-    const project = getProject(req.params.id);
+    const project = getProject(req.params.id!);
     res.json({ success: true, data: project });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });
@@ -34,7 +34,7 @@ router.get('/:id', validateParams(IdParamSchema), (req, res) => {
 router.patch('/:id', authRequired, validateParams(IdParamSchema), validate(PatchBodySchema), (req, res) => {
   try {
     const { changes, expected_version } = req.body;
-    const project = updateProject(req.params.id, changes, expected_version);
+    const project = updateProject(req.params.id!, changes, expected_version);
     res.json({ success: true, data: project });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });
@@ -43,7 +43,7 @@ router.patch('/:id', authRequired, validateParams(IdParamSchema), validate(Patch
 
 router.delete('/:id', authRequired, validateParams(IdParamSchema), (req, res) => {
   try {
-    deleteProject(req.params.id);
+    deleteProject(req.params.id!);
     res.json({ success: true, data: null });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });

@@ -9,7 +9,7 @@ if (!fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true });
 }
 
-const db = new Database(DB_PATH);
+const db: import('better-sqlite3').Database = new Database(DB_PATH);
 
 // Performance settings
 db.pragma('journal_mode = WAL');

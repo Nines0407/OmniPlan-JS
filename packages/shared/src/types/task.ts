@@ -8,8 +8,8 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
-  week_start: string | null;
-  duration_weeks: number;
+  start_date: string | null;
+  duration_days: number;
   assignee_id: string | null;
   progress: number;
   tags: string;
@@ -27,8 +27,8 @@ export interface TaskDependency {
 export type CreateTaskInput = Pick<Task, 'name'> & {
   description?: string;
   priority?: TaskPriority;
-  week_start?: string;
-  duration_weeks?: number;
+  start_date?: string;
+  duration_days?: number;
   assignee_id?: string;
   tags?: string[];
 };
@@ -38,8 +38,8 @@ export type UpdateTaskInput = {
   description?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
-  week_start?: string | null;
-  duration_weeks?: number;
+  start_date?: string | null;
+  duration_days?: number;
   assignee_id?: string | null;
   progress?: number;
   tags?: string[];

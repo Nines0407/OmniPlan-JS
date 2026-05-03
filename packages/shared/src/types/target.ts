@@ -4,6 +4,8 @@ export interface Target {
   name: string;
   description: string | null;
   cover_url: string | null;
+  priority: string;
+  duration: number | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -19,6 +21,8 @@ export interface TargetStats extends Target {
 export type CreateTargetInput = Pick<Target, 'name'> & {
   description?: string;
   cover_url?: string;
+  priority?: string;
+  duration?: number | null;
 };
 
-export type UpdateTargetInput = Partial<Pick<Target, 'name' | 'description' | 'cover_url' | 'sort_order'>>;
+export type UpdateTargetInput = Partial<Pick<Target, 'name' | 'description' | 'cover_url' | 'priority' | 'duration' | 'sort_order'>>;

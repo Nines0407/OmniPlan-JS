@@ -6,7 +6,7 @@ interface TaskState {
   tasks: Task[];
   loading: boolean;
   error: string | null;
-  filters: { status?: string; assignee_id?: string; week_start?: string };
+  filters: { status?: string; assignee_id?: string; start_date?: string };
   loadTasks: (targetId: string, query?: Record<string, string>) => Promise<void>;
   addTask: (targetId: string, data: Record<string, unknown>) => Promise<Task>;
   editTask: (id: string, data: Record<string, unknown>) => Promise<void>;

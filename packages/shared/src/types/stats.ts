@@ -10,8 +10,8 @@ export interface ProjectStats {
   targets: TargetStats[];
 }
 
-export interface WeekSummary {
-  week_start: string;
+export interface DaySummary {
+  start_date: string;
   target_id: string;
   task_count: number;
   done_count: number;
@@ -24,8 +24,8 @@ export interface TimelineData {
     name: string;
     target_id: string;
     target_name: string;
-    week_start: string;
-    duration_weeks: number;
+    start_date: string;
+    duration_days: number;
     status: string;
     progress: number;
     assignee_name?: string;

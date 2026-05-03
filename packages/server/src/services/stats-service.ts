@@ -1,5 +1,5 @@
 import { db } from '../db/connection';
-import type { ProjectStats, WeekSummary, TimelineData } from '@omniplan/shared';
+import type { ProjectStats, DaySummary, TimelineData } from '@omniplan/shared';
 
 export function getStats(projectId?: string, targetId?: string): ProjectStats | { targets: unknown[] } {
   if (projectId) {
@@ -8,7 +8,7 @@ export function getStats(projectId?: string, targetId?: string): ProjectStats | 
 
     const tasks = db.prepare('SELECT COUNT(*) as total FROM tasks tk JOIN targets t ON tk.target_id = t.id WHERE t.project_id = ?').get(projectId) as { total: number };
     const done = db.prepare("SELECT COUNT(*) as done FROM tasks tk JOIN targets t ON tk.target_id = t.id WHERE t.project_id = ? AND tk.status = 'done'").get(projectId) as { done: number };
-    const overdue = db.prepare("SELECT COUNT(*) as overdue FROM tasks tk JOIN targets t ON tk.target_id = t.id WHERE t.project_id = ? AND tk.week_start < date('now') AND tk.status != 'done'").get(projectId) as { overdue: number };
+    const overdue = db.prepare("SELECT COUNT(*) as overdue FROM tasks tk JOIN targets t ON tk.target_id = t.id WHERE t.project_id = ? AND tk.start_date < date('now') AND tk.status != 'done'").get(projectId) as { overdue: number };
     const targets = db.prepare('SELECT t.*, COALESCE(ts.total_tasks,0) as total_tasks, COALESCE(ts.done_tasks,0) as done_tasks, COALESCE(ts.completion_rate,0) as completion_rate, COALESCE(ts.overdue_tasks,0) as overdue_tasks FROM targets t LEFT JOIN target_stats ts ON ts.target_id = t.id WHERE t.project_id = ?').all(projectId);
 
     return {
@@ -33,13 +33,13 @@ export function getStats(projectId?: string, targetId?: string): ProjectStats | 
 export function getTimeline(projectId: string): TimelineData {
   const tasks = db.prepare(`
     SELECT tk.id, tk.name, tk.target_id, t.name as target_name,
-           tk.week_start, tk.duration_weeks, tk.status, tk.progress,
+           tk.start_date, tk.duration_days, tk.status, tk.progress,
            u.display_name as assignee_name
     FROM tasks tk
     JOIN targets t ON tk.target_id = t.id
     LEFT JOIN users u ON tk.assignee_id = u.id
-    WHERE t.project_id = ? AND tk.week_start IS NOT NULL
-    ORDER BY tk.week_start ASC
+    WHERE t.project_id = ? AND tk.start_date IS NOT NULL
+    ORDER BY tk.start_date ASC
   `).all(projectId);
 
   const milestones = db.prepare('SELECT id, name, due_date, status FROM milestones WHERE project_id = ? ORDER BY due_date ASC').all(projectId);
@@ -59,14 +59,15 @@ export function getTimeline(projectId: string): TimelineData {
   };
 }
 
-export function getWeekSummary(projectId?: string): WeekSummary[] {
+export function getDaySummary(projectId?: string): DaySummary[] {
   if (projectId) {
     return db.prepare(`
-      SELECT ws.* FROM week_summary ws
-      JOIN targets t ON ws.target_id = t.id
+      SELECT ds.* FROM day_summary ds
+      JOIN targets t ON ds.target_id = t.id
       WHERE t.project_id = ?
-      ORDER BY ws.week_start ASC
-    `).all(projectId) as WeekSummary[];
+      ORDER BY ds.start_date ASC
+    `).all(projectId) as DaySummary[];
   }
-  return db.prepare('SELECT * FROM week_summary ORDER BY week_start ASC').all() as WeekSummary[];
+  return db.prepare('SELECT * FROM day_summary ORDER BY start_date ASC').all() as DaySummary[];
 }
+

@@ -29,6 +29,9 @@ export function TaskView() {
   const { addToast } = useUiStore();
   const [showCreate, setShowCreate] = useState(false);
   const [taskName, setTaskName] = useState('');
+  const [newPriority, setNewPriority] = useState('medium');
+  const [newStartDate, setNewStartDate] = useState('');
+  const [newDurationDays, setNewDurationDays] = useState(1);
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
 
   const target = targets.find((t) => t.id === tid);
@@ -41,9 +44,17 @@ export function TaskView() {
   const handleCreate = async () => {
     if (!taskName.trim() || !tid) return;
     try {
-      await addTask(tid, { name: taskName.trim() });
+      await addTask(tid, {
+        name: taskName.trim(),
+        priority: newPriority,
+        start_date: newStartDate || undefined,
+        duration_days: newDurationDays,
+      });
       addToast('Task created', 'success');
       setTaskName('');
+      setNewPriority('medium');
+      setNewStartDate('');
+      setNewDurationDays(1);
       setShowCreate(false);
     } catch (err: any) {
       addToast(err.message, 'error');
@@ -51,9 +62,18 @@ export function TaskView() {
   };
 
   const handleStatusChange = async (taskId: string, status: TaskStatus) => {
-    const progress = status === 'done' ? 100 : status === 'cancelled' ? 0 : undefined;
+    const progress = status === 'done' ? 100 : 0;
     try {
       await editTask(taskId, { status, progress });
+      setEditingCell(null);
+    } catch (err: any) {
+      addToast(err.message, 'error');
+    }
+  };
+
+  const handleCellEdit = async (taskId: string, field: string, value: unknown) => {
+    try {
+      await editTask(taskId, { [field]: value });
       setEditingCell(null);
     } catch (err: any) {
       addToast(err.message, 'error');
@@ -69,10 +89,10 @@ export function TaskView() {
     }
   };
 
-  const groupByWeek = (taskList: Task[]) => {
+  const groupByDate = (taskList: Task[]) => {
     const groups: Record<string, Task[]> = {};
     for (const t of taskList) {
-      const wk = t.week_start || 'Unscheduled';
+      const wk = t.start_date || 'Unscheduled';
       if (!groups[wk]) groups[wk] = [];
       groups[wk]!.push(t);
     }
@@ -93,12 +113,39 @@ export function TaskView() {
               + Add Task
             </button>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
                 type="text" value={taskName} onChange={(e) => setTaskName(e.target.value)}
                 placeholder="Task name" className="px-3 py-1.5 bg-surface border border-gray-700 rounded text-white text-sm"
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               />
+              <select
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value)}
+                className="px-2 py-1.5 bg-surface border border-gray-700 rounded text-white text-xs"
+              >
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+                <option value="urgent">urgent</option>
+              </select>
+              <input
+                type="date"
+                value={newStartDate}
+                onChange={(e) => setNewStartDate(e.target.value)}
+                className="px-2 py-1.5 bg-surface border border-gray-700 rounded text-white text-sm"
+              />
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={newDurationDays}
+                  onChange={(e) => setNewDurationDays(Number(e.target.value) || 1)}
+                  className="w-14 px-2 py-1.5 bg-surface border border-gray-700 rounded text-white text-sm text-center"
+                />
+                <span>d</span>
+              </div>
               <button onClick={handleCreate} className="px-3 py-1.5 bg-cyber-blue text-surface rounded text-sm">Add</button>
               <button onClick={() => setShowCreate(false)} className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm">Cancel</button>
             </div>
@@ -112,10 +159,10 @@ export function TaskView() {
         <div className="text-center text-gray-500 py-12">No tasks yet</div>
       ) : (
         <div className="space-y-6">
-          {groupByWeek(tasks).map(([week, weekTasks]) => (
+          {groupByDate(tasks).map(([week, weekTasks]) => (
             <div key={week}>
               <h3 className="text-sm font-medium text-gray-500 mb-2">
-                {week === 'Unscheduled' ? 'Unscheduled' : `Week of ${week}`}
+                {week === 'Unscheduled' ? 'Unscheduled' : `${week}`}
                 <span className="ml-2 text-gray-600">({weekTasks.length})</span>
               </h3>
               <div className="bg-surface-card rounded-lg overflow-hidden border border-gray-800">
@@ -125,6 +172,7 @@ export function TaskView() {
                       <th className="px-4 py-2 font-medium">Task</th>
                       <th className="px-4 py-2 font-medium">Status</th>
                       <th className="px-4 py-2 font-medium">Priority</th>
+                      <th className="px-4 py-2 font-medium">Start</th>
                       <th className="px-4 py-2 font-medium">Duration</th>
                       <th className="px-4 py-2 font-medium">Progress</th>
                       <th className="px-4 py-2 font-medium w-16"></th>
@@ -153,22 +201,122 @@ export function TaskView() {
                             <span className={`text-xs ${STATUS_COLORS[t.status]}`}>{t.status.replace('_', ' ')}</span>
                           )}
                         </td>
-                        <td className={`px-4 py-2.5 text-xs ${PRIORITY_COLORS[t.priority]}`}>
-                          {t.priority}
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-400 text-xs">
-                          {t.duration_weeks}w
+                        <td className="px-4 py-2.5">
+                          {isAuthenticated ? (
+                            editingCell?.id === t.id && editingCell?.field === 'priority' ? (
+                              <select
+                                value={t.priority}
+                                onChange={(e) => handleCellEdit(t.id, 'priority', e.target.value)}
+                                onBlur={() => setEditingCell(null)}
+                                autoFocus
+                                className="bg-surface border border-cyber-blue rounded px-1.5 py-0.5 text-xs text-white"
+                              >
+                                <option value="low">low</option>
+                                <option value="medium">medium</option>
+                                <option value="high">high</option>
+                                <option value="urgent">urgent</option>
+                              </select>
+                            ) : (
+                              <span
+                                className={`text-xs ${PRIORITY_COLORS[t.priority]} cursor-pointer hover:underline`}
+                                onClick={() => setEditingCell({ id: t.id, field: 'priority' })}
+                              >
+                                {t.priority}
+                              </span>
+                            )
+                          ) : (
+                            <span className={`text-xs ${PRIORITY_COLORS[t.priority]}`}>{t.priority}</span>
+                          )}
                         </td>
                         <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden max-w-[80px]">
-                              <div
-                                className="h-full bg-neon-green transition-all"
-                                style={{ width: `${t.progress}%` }}
+                          {isAuthenticated ? (
+                            editingCell?.id === t.id && editingCell?.field === 'start_date' ? (
+                              <input
+                                type="date"
+                                value={t.start_date || ''}
+                                onChange={(e) => handleCellEdit(t.id, 'start_date', e.target.value || null)}
+                                onBlur={() => setEditingCell(null)}
+                                autoFocus
+                                className="bg-surface border border-cyber-blue rounded px-1.5 py-0.5 text-xs text-white w-28"
                               />
+                            ) : (
+                              <span
+                                className="text-xs text-gray-400 cursor-pointer hover:underline"
+                                onClick={() => setEditingCell({ id: t.id, field: 'start_date' })}
+                              >
+                                {t.start_date || '—'}
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-xs text-gray-400">{t.start_date || '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {isAuthenticated ? (
+                            editingCell?.id === t.id && editingCell?.field === 'duration_days' ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="1"
+                                   max="365"
+                                  value={t.duration_days}
+                                  onChange={(e) => handleCellEdit(t.id, 'duration_days', Number(e.target.value) || 1)}
+                                  onBlur={() => setEditingCell(null)}
+                                  autoFocus
+                                  className="bg-surface border border-cyber-blue rounded px-1.5 py-0.5 text-xs text-white w-12 text-center"
+                                />
+                                <span className="text-xs text-gray-500">d</span>
+                              </div>
+                            ) : (
+                              <span
+                                className="text-xs text-gray-400 cursor-pointer hover:underline"
+                                onClick={() => setEditingCell({ id: t.id, field: 'duration_days' })}
+                              >
+                                {t.duration_days}d
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-xs text-gray-400">{t.duration_days}d</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {isAuthenticated ? (
+                            editingCell?.id === t.id && editingCell?.field === 'progress' ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={t.progress}
+                                onChange={(e) => handleCellEdit(t.id, 'progress', Number(e.target.value))}
+                                onBlur={() => setEditingCell(null)}
+                                autoFocus
+                                className="bg-surface border border-cyber-blue rounded px-1.5 py-0.5 text-xs text-white w-14 text-center"
+                              />
+                            ) : (
+                              <div
+                                className="flex items-center gap-2 cursor-pointer"
+                                onClick={() => setEditingCell({ id: t.id, field: 'progress' })}
+                              >
+                                <div className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden max-w-[80px]">
+                                  <div
+                                    className="h-full bg-neon-green transition-all"
+                                    style={{ width: `${t.progress}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-gray-500">{t.progress}%</span>
+                              </div>
+                            )
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden max-w-[80px]">
+                                <div
+                                  className="h-full bg-neon-green transition-all"
+                                  style={{ width: `${t.progress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500">{t.progress}%</span>
                             </div>
-                            <span className="text-xs text-gray-500">{t.progress}%</span>
-                          </div>
+                          )}
                         </td>
                         <td className="px-4 py-2.5">
                           {isAuthenticated && (

@@ -10,9 +10,9 @@ function generateId(prefix: string): string {
   return result;
 }
 
-function weekStart(offset: number): string {
+function startDate(offsetDays: number): string {
   const d = new Date();
-  d.setDate(d.getDate() - d.getDay() + 1 + offset * 7); // Monday
+  d.setDate(d.getDate() + offsetDays);
   return d.toISOString().split('T')[0]!;
 }
 
@@ -49,23 +49,23 @@ export function seed(): void {
     );
 
     const tasks = [
-      { n: '行业趋势调研',      s: 'done',       p: 'high',   w: weekStart(-2), d: 2, a: u1, progress: 100 },
-      { n: '竞品分析报告',      s: 'done',       p: 'high',   w: weekStart(-2), d: 2, a: u1, progress: 100 },
-      { n: '客户需求文档整理',  s: 'done',       p: 'medium', w: weekStart(-1), d: 1, a: u2, progress: 100 },
-      { n: 'SWOT 分析',         s: 'done',       p: 'high',   w: weekStart(-1), d: 1, a: u1, progress: 100 },
-      { n: '数据收集补充',      s: 'in_progress',p: 'medium', w: weekStart(-1), d: 1, a: u2, progress: 60 },
-      { n: '提案大纲撰写',      s: 'done',       p: 'high',   w: weekStart(-1), d: 1, a: null, progress: 100 },
-      { n: '提案初稿撰写',      s: 'in_progress',p: 'urgent', w: weekStart(0),  d: 2, a: u2, progress: 45 },
-      { n: '演示材料设计',      s: 'in_progress',p: 'high',   w: weekStart(0),  d: 1, a: u1, progress: 30 },
-      { n: '内部评审',          s: 'todo',       p: 'high',   w: weekStart(1),  d: 1, a: null, progress: 0 },
-      { n: '报价方案测算',      s: 'todo',       p: 'urgent', w: weekStart(1),  d: 1, a: u1, progress: 0 },
-      { n: '终稿修订',          s: 'todo',       p: 'high',   w: weekStart(2),  d: 1, a: u2, progress: 0 },
-      { n: '客户演示彩排',      s: 'todo',       p: 'medium', w: weekStart(2),  d: 1, a: null, progress: 0 },
+      { n: '行业趋势调研',      s: 'done',       p: 'high',   w: startDate(-2), d: 2, a: u1, progress: 100 },
+      { n: '竞品分析报告',      s: 'done',       p: 'high',   w: startDate(-2), d: 2, a: u1, progress: 100 },
+      { n: '客户需求文档整理',  s: 'done',       p: 'medium', w: startDate(-1), d: 1, a: u2, progress: 100 },
+      { n: 'SWOT 分析',         s: 'done',       p: 'high',   w: startDate(-1), d: 1, a: u1, progress: 100 },
+      { n: '数据收集补充',      s: 'in_progress',p: 'medium', w: startDate(-1), d: 1, a: u2, progress: 60 },
+      { n: '提案大纲撰写',      s: 'done',       p: 'high',   w: startDate(-1), d: 1, a: null, progress: 100 },
+      { n: '提案初稿撰写',      s: 'in_progress',p: 'urgent', w: startDate(0),  d: 2, a: u2, progress: 45 },
+      { n: '演示材料设计',      s: 'in_progress',p: 'high',   w: startDate(0),  d: 1, a: u1, progress: 30 },
+      { n: '内部评审',          s: 'todo',       p: 'high',   w: startDate(1),  d: 1, a: null, progress: 0 },
+      { n: '报价方案测算',      s: 'todo',       p: 'urgent', w: startDate(1),  d: 1, a: u1, progress: 0 },
+      { n: '终稿修订',          s: 'todo',       p: 'high',   w: startDate(2),  d: 1, a: u2, progress: 0 },
+      { n: '客户演示彩排',      s: 'todo',       p: 'medium', w: startDate(2),  d: 1, a: null, progress: 0 },
     ];
 
     const taskIds: Record<string, string> = {};
     const insertTask = db.prepare(`
-      INSERT INTO tasks (id, target_id, name, description, status, priority, week_start, duration_weeks, assignee_id, progress, tags, created_at, updated_at)
+      INSERT INTO tasks (id, target_id, name, description, status, priority, start_date, duration_days, assignee_id, progress, tags, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
 
@@ -92,10 +92,10 @@ export function seed(): void {
 
     // Milestones
     db.prepare('INSERT INTO milestones (id, project_id, name, description, due_date, status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      generateId('mil'), proj, '提案初稿完成', '完成提案初稿并提交内部评审', weekStart(1), 'pending',
+      generateId('mil'), proj, '提案初稿完成', '完成提案初稿并提交内部评审', startDate(1), 'pending',
     );
     db.prepare('INSERT INTO milestones (id, project_id, name, description, due_date, status) VALUES (?, ?, ?, ?, ?, ?)').run(
-      generateId('mil'), proj, '客户提案交付', '向客户正式提交提案', weekStart(3), 'pending',
+      generateId('mil'), proj, '客户提案交付', '向客户正式提交提案', startDate(3), 'pending',
     );
   })();
 

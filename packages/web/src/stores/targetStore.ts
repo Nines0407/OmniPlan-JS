@@ -7,7 +7,7 @@ interface TargetState {
   loading: boolean;
   error: string | null;
   loadTargets: (projectId: string) => Promise<void>;
-  addTarget: (projectId: string, data: { name: string; description?: string }) => Promise<Target>;
+  addTarget: (projectId: string, data: { name: string; description?: string; priority?: string; duration?: number | null }) => Promise<Target>;
   editTarget: (id: string, data: Record<string, unknown>) => Promise<void>;
   removeTarget: (id: string) => Promise<void>;
 }

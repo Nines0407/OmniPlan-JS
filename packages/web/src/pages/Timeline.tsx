@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getTimeline } from '../api/stats';
-import type { TimelineData, Task } from '@omniplan/shared';
+import type { TimelineData } from '@omniplan/shared';
 
-interface TimelineItem {
-  id: string;
-  name: string;
-  target_name: string;
-  week_start: string;
-  duration_weeks: number;
-  status: string;
-  progress: number;
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function dateDiff(a: Date, b: Date): number {
+  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function Timeline() {
@@ -45,16 +49,33 @@ export function Timeline() {
     );
   }
 
-  const weeks = new Set<string>();
-  for (const t of data.tasks) {
-    if (t.week_start) weeks.add(t.week_start);
+  const tasks = data.tasks.filter((t) => t.start_date && t.duration_days > 0);
+  if (tasks.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <Link to={`/projects/${pid}`} className="text-gray-400 hover:text-cyber-blue">&larr; Back</Link>
+        <div className="text-center text-gray-500 py-16">No scheduled tasks to display</div>
+      </div>
+    );
   }
-  const sortedWeeks = [...weeks].sort();
 
-  const getWeekIndex = (weekStart: string) => sortedWeeks.indexOf(weekStart);
+  let minDate = new Date(tasks[0]!.start_date);
+  let maxDate = new Date(tasks[0]!.start_date);
+  for (const t of tasks) {
+    const d = new Date(t.start_date);
+    if (d < minDate) minDate = d;
+    const end = addDays(d, t.duration_days - 1);
+    if (end > maxDate) maxDate = end;
+  }
 
-  const groupedByTarget: Record<string, TimelineItem[]> = {};
-  for (const t of data.tasks) {
+  const totalDays = dateDiff(minDate, maxDate) + 1;
+  const allDates: Date[] = [];
+  for (let i = 0; i < totalDays; i++) {
+    allDates.push(addDays(minDate, i));
+  }
+
+  const groupedByTarget: Record<string, typeof tasks> = {};
+  for (const t of tasks) {
     if (!groupedByTarget[t.target_name]) groupedByTarget[t.target_name] = [];
     groupedByTarget[t.target_name]!.push(t);
   }
@@ -67,37 +88,57 @@ export function Timeline() {
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[800px]">
-          {/* Header */}
+        <div style={{ minWidth: `${allDates.length * 32 + 192}px` }}>
+          {/* Month labels */}
+          <div className="flex border-b border-gray-800 pb-1 mb-1">
+            <div className="w-48 flex-shrink-0" />
+            <div className="flex-1 flex">
+              {allDates.map((d, i) => {
+                const prev = i > 0 ? allDates[i - 1] : null;
+                const showMonth = !prev || d.getMonth() !== prev.getMonth();
+                return (
+                  <div key={i} className="text-center text-xs text-gray-500" style={{ flex: 1 }}>
+                    {showMonth ? d.toLocaleDateString('en-US', { month: 'short', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined }) : ''}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Day column headers */}
           <div className="flex border-b border-gray-800 pb-2 mb-2">
             <div className="w-48 flex-shrink-0 text-sm text-gray-500 font-medium">Task</div>
             <div className="flex-1 flex">
-              {sortedWeeks.map((w) => (
-                <div key={w} className="flex-1 text-center text-xs text-gray-500">
-                  {new Date(w).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {allDates.map((d, i) => (
+                <div key={i} className="text-center text-xs text-gray-600" style={{ flex: 1 }}>
+                  {d.getDate()}
                 </div>
               ))}
             </div>
           </div>
 
-          {Object.entries(groupedByTarget).map(([targetName, tasks]) => (
+          {Object.entries(groupedByTarget).map(([targetName, targetTasks]) => (
             <div key={targetName} className="mb-6">
               <div className="text-sm text-cyber-blue font-medium mb-2">{targetName}</div>
-              {tasks.map((t) => (
-                <div key={t.id} className="flex items-center mb-1.5 group">
-                  <div className="w-48 flex-shrink-0 text-sm text-gray-400 truncate pr-2" title={t.name}>
-                    {t.name}
-                  </div>
-                  <div className="flex-1 flex relative h-7">
-                    {sortedWeeks.map((w, i) => (
-                      <div key={w} className="flex-1 border-l border-gray-800/50" />
-                    ))}
-                    {t.week_start && (
+              {targetTasks.map((t) => {
+                const taskStart = new Date(t.start_date);
+                const startOffset = dateDiff(minDate, taskStart);
+                const width = Math.max(t.duration_days, 1);
+
+                return (
+                  <div key={t.id} className="flex items-center mb-1.5 group">
+                    <div className="w-48 flex-shrink-0 text-sm text-gray-400 truncate pr-2" title={t.name}>
+                      {t.name}
+                    </div>
+                    <div className="flex-1 flex relative h-7">
+                      {allDates.map((_, i) => (
+                        <div key={i} className="flex-1 border-l border-gray-800/30" />
+                      ))}
                       <div
                         className="absolute top-1 h-5 rounded bg-cyber-blue/30 border border-cyber-blue/50"
                         style={{
-                          left: `${(getWeekIndex(t.week_start) / sortedWeeks.length) * 100}%`,
-                          width: `${(t.duration_weeks / sortedWeeks.length) * 100}%`,
+                          left: `${(startOffset / totalDays) * 100}%`,
+                          width: `${(width / totalDays) * 100}%`,
                         }}
                       >
                         <div
@@ -105,10 +146,10 @@ export function Timeline() {
                           style={{ width: `${t.progress}%` }}
                         />
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ))}
 

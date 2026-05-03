@@ -4,8 +4,8 @@ export const CreateTaskSchema = z.object({
   name: z.string().min(1).max(500),
   description: z.string().max(5000).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  week_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  duration_weeks: z.number().int().min(1).max(52).optional(),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  duration_days: z.number().int().min(1).max(365).optional(),
   assignee_id: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -15,8 +15,8 @@ export const UpdateTaskSchema = z.object({
   description: z.string().max(5000).nullable().optional(),
   status: z.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  week_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  duration_weeks: z.number().int().min(1).max(52).optional(),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  duration_days: z.number().int().min(1).max(365).optional(),
   assignee_id: z.string().nullable().optional(),
   progress: z.number().min(0).max(100).optional(),
   tags: z.array(z.string()).optional(),
@@ -30,7 +30,7 @@ export const CreateDependencySchema = z.object({
 export const TaskQuerySchema = z.object({
   status: z.string().optional(),
   assignee_id: z.string().optional(),
-  week_start: z.string().optional(),
+  start_date: z.string().optional(),
 });
 
 export const BulkUpdateSchema = z.object({
@@ -38,6 +38,6 @@ export const BulkUpdateSchema = z.object({
   changes: z.object({
     status: z.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']).optional(),
     progress: z.number().min(0).max(100).optional(),
-    week_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   }),
 });

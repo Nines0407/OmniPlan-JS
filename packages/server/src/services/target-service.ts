@@ -44,8 +44,8 @@ export function createTarget(projectId: string, data: CreateTargetInput): Target
   const now = new Date().toISOString();
   const maxSort = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM targets WHERE project_id = ?').get(projectId) as { next: number };
   db.prepare(
-    'INSERT INTO targets (id, project_id, name, description, cover_url, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, projectId, data.name, data.description || null, data.cover_url || null, maxSort.next, now, now);
+    'INSERT INTO targets (id, project_id, name, description, cover_url, priority, duration, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, projectId, data.name, data.description || null, data.cover_url || null, data.priority || 'medium', data.duration ?? null, maxSort.next, now, now);
   return getTarget(id);
 }
 
@@ -60,6 +60,8 @@ export function updateTarget(id: string, data: UpdateTargetInput, expectedVersio
   if (data.name !== undefined) { sets.push('name = ?'); vals.push(data.name); }
   if (data.description !== undefined) { sets.push('description = ?'); vals.push(data.description); }
   if (data.cover_url !== undefined) { sets.push('cover_url = ?'); vals.push(data.cover_url); }
+  if (data.priority !== undefined) { sets.push('priority = ?'); vals.push(data.priority); }
+  if (data.duration !== undefined) { sets.push('duration = ?'); vals.push(data.duration); }
   if (data.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(data.sort_order); }
   if (sets.length === 0) return target;
   sets.push('updated_at = ?');

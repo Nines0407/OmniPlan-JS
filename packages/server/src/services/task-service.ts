@@ -14,7 +14,7 @@ function generateId(prefix: string): string {
 interface TaskQuery {
   status?: string;
   assignee_id?: string;
-  week_start?: string;
+  start_date?: string;
 }
 
 export function listTasks(targetId: string, query: TaskQuery = {}): Task[] {
@@ -29,13 +29,13 @@ export function listTasks(targetId: string, query: TaskQuery = {}): Task[] {
     conditions.push('assignee_id = ?');
     params.push(query.assignee_id);
   }
-  if (query.week_start) {
-    conditions.push('week_start = ?');
-    params.push(query.week_start);
+  if (query.start_date) {
+    conditions.push('start_date = ?');
+    params.push(query.start_date);
   }
 
   return db.prepare(
-    `SELECT * FROM tasks WHERE ${conditions.join(' AND ')} ORDER BY week_start ASC, priority ASC, created_at ASC`,
+    `SELECT * FROM tasks WHERE ${conditions.join(' AND ')} ORDER BY start_date ASC, priority ASC, created_at ASC`,
   ).all(...params) as Task[];
 }
 
@@ -53,14 +53,14 @@ export function createTask(targetId: string, data: CreateTaskInput): Task {
   const id = generateId('tsk');
   const now = new Date().toISOString();
   db.prepare(
-    `INSERT INTO tasks (id, target_id, name, description, status, priority, week_start, duration_weeks, assignee_id, progress, tags, created_at, updated_at)
+    `INSERT INTO tasks (id, target_id, name, description, status, priority, start_date, duration_days, assignee_id, progress, tags, created_at, updated_at)
      VALUES (?, ?, ?, ?, 'todo', ?, ?, ?, ?, 0, ?, ?, ?)`,
   ).run(
     id, targetId, data.name,
     data.description || null,
     data.priority || 'medium',
-    data.week_start || null,
-    data.duration_weeks || 1,
+    data.start_date || null,
+    data.duration_days || 1,
     data.assignee_id || null,
     JSON.stringify(data.tags || []),
     now, now,
@@ -81,8 +81,8 @@ export function updateTask(id: string, data: UpdateTaskInput, expectedVersion?: 
   if (data.description !== undefined) { sets.push('description = ?'); vals.push(data.description); }
   if (data.status !== undefined) { sets.push('status = ?'); vals.push(data.status); }
   if (data.priority !== undefined) { sets.push('priority = ?'); vals.push(data.priority); }
-  if (data.week_start !== undefined) { sets.push('week_start = ?'); vals.push(data.week_start); }
-  if (data.duration_weeks !== undefined) { sets.push('duration_weeks = ?'); vals.push(data.duration_weeks); }
+  if (data.start_date !== undefined) { sets.push('start_date = ?'); vals.push(data.start_date); }
+  if (data.duration_days !== undefined) { sets.push('duration_days = ?'); vals.push(data.duration_days); }
   if (data.assignee_id !== undefined) { sets.push('assignee_id = ?'); vals.push(data.assignee_id); }
   if (data.progress !== undefined) { sets.push('progress = ?'); vals.push(data.progress); }
   if (data.tags !== undefined) { sets.push('tags = ?'); vals.push(JSON.stringify(data.tags)); }
@@ -115,11 +115,11 @@ export function removeDependency(taskId: string, depId: string): void {
   if (result.changes === 0) throw new NotFoundError(`Dependency not found`);
 }
 
-export function bulkUpdateTasks(taskIds: string[], changes: { status?: TaskStatus; progress?: number; week_start?: string | null }): Task[] {
+export function bulkUpdateTasks(taskIds: string[], changes: { status?: TaskStatus; progress?: number; start_date?: string | null }): Task[] {
   const now = new Date().toISOString();
   const updated: Task[] = [];
 
-  const updateStmt = db.prepare('UPDATE tasks SET status = COALESCE(?, status), progress = COALESCE(?, progress), week_start = COALESCE(?, week_start), updated_at = ? WHERE id = ?');
+  const updateStmt = db.prepare('UPDATE tasks SET status = COALESCE(?, status), progress = COALESCE(?, progress), start_date = COALESCE(?, start_date), updated_at = ? WHERE id = ?');
 
   db.transaction(() => {
     for (const taskId of taskIds) {
@@ -128,7 +128,7 @@ export function bulkUpdateTasks(taskIds: string[], changes: { status?: TaskStatu
       updateStmt.run(
         changes.status || null,
         changes.progress !== undefined ? changes.progress : null,
-        changes.week_start !== undefined ? changes.week_start : null,
+        changes.start_date !== undefined ? changes.start_date : null,
         now,
         taskId,
       );

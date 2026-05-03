@@ -5,14 +5,25 @@ import { useTargetStore } from '../stores/targetStore';
 import { useAuthStore } from '../stores/authStore';
 import { useUiStore } from '../stores/uiStore';
 
+const PRIORITY_OPTIONS = ['urgent', 'high', 'medium', 'low'] as const;
+
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: 'text-red-400 bg-red-400/10 border-red-400/30',
+  high: 'text-orange-400 bg-orange-400/10 border-orange-400/30',
+  medium: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
+  low: 'text-gray-400 bg-gray-400/10 border-gray-400/30',
+};
+
 export function ProjectDetail() {
   const { pid } = useParams<{ pid: string }>();
   const { currentProject, loadProject } = useProjectStore();
-  const { targets, loading, loadTargets, addTarget } = useTargetStore();
+  const { targets, loading, loadTargets, addTarget, editTarget } = useTargetStore();
   const { isAuthenticated } = useAuthStore();
   const { addToast } = useUiStore();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
+  const [newPriority, setNewPriority] = useState('medium');
+  const [newDuration, setNewDuration] = useState<number | undefined>();
 
   useEffect(() => {
     if (pid) {
@@ -24,9 +35,11 @@ export function ProjectDetail() {
   const handleCreate = async () => {
     if (!name.trim() || !pid) return;
     try {
-      await addTarget(pid, { name: name.trim() });
+      await addTarget(pid, { name: name.trim(), priority: newPriority, duration: newDuration ?? null });
       addToast('Target created', 'success');
       setName('');
+      setNewPriority('medium');
+      setNewDuration(undefined);
       setShowCreate(false);
     } catch (err: any) {
       addToast(err.message, 'error');
@@ -76,6 +89,28 @@ export function ProjectDetail() {
             className="w-full px-3 py-2 bg-surface border border-gray-700 rounded text-white mb-3 focus:border-cyber-blue outline-none"
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
           />
+          <div className="flex gap-3 mb-3">
+            <select
+              value={newPriority}
+              onChange={(e) => setNewPriority(e.target.value)}
+              className="px-2 py-2 bg-surface border border-gray-700 rounded text-white text-sm"
+            >
+              {PRIORITY_OPTIONS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <div className="flex items-center gap-1 text-sm text-gray-400">
+              <input
+                type="number"
+                min="0"
+                value={newDuration ?? ''}
+                placeholder="Duration"
+                onChange={(e) => setNewDuration(e.target.value ? Number(e.target.value) : undefined)}
+                className="w-20 px-2 py-2 bg-surface border border-gray-700 rounded text-white text-sm"
+              />
+              <span>days</span>
+            </div>
+          </div>
           <div className="flex gap-2">
             <button onClick={handleCreate} className="px-4 py-1.5 bg-cyber-blue text-surface rounded text-sm">Create</button>
             <button onClick={() => setShowCreate(false)} className="px-4 py-1.5 bg-gray-700 text-white rounded text-sm">Cancel</button>
@@ -93,6 +128,46 @@ export function ProjectDetail() {
             <h3 className="text-lg font-semibold text-white mb-3 group-hover:text-cyber-blue">
               {t.name}
             </h3>
+
+            {isAuthenticated && (
+              <div className="flex items-center gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+                <select
+                  value={t.priority}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    editTarget(t.id, { priority: e.target.value });
+                  }}
+                  className={`text-xs px-1.5 py-0.5 rounded border appearance-none cursor-pointer ${PRIORITY_COLORS[t.priority] || PRIORITY_COLORS.medium}`}
+                >
+                  {PRIORITY_OPTIONS.map((p) => (
+                    <option key={p} value={p} className="bg-surface text-white">{p}</option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-1 text-xs text-gray-400">
+                  <input
+                    type="number"
+                    min="0"
+                    value={t.duration ?? ''}
+                    placeholder="days"
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      const val = e.target.value ? Number(e.target.value) : null;
+                      editTarget(t.id, { duration: val });
+                    }}
+                    className="w-14 px-1.5 py-0.5 bg-surface border border-gray-700 rounded text-white text-xs text-center"
+                  />
+                  <span>days</span>
+                </div>
+              </div>
+            )}
+
+            {!isAuthenticated && (
+              <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
+                <span>{t.priority}</span>
+                {t.duration != null && <span>{t.duration} days</span>}
+              </div>
+            )}
+
             <div className="mb-3">
               <div className="h-2 bg-surface rounded-full overflow-hidden">
                 <div

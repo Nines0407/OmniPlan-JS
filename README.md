@@ -14,14 +14,16 @@
 
 ## 特性
 
-- **多项目管理** — 项目 → 目标 → 任务 三层模型，支持任务依赖、里程碑、周次规划
-- **甘特图** — 可视化时间线，拖拽调整任务周次和持续时间
+- **多项目管理** — 项目 → 目标 → 任务 三层模型，支持任务依赖、里程碑、按日排期
+- **甘特图** — 按日精度渲染时间线，条形位置/宽度精确映射 start_date 和 duration_days
 - **实时协作** — WebSocket 推送状态变更，全量增量更新，无需轮询
 - **AI 原生** — 内置 MCP Server，支持 opencode / Claude Code 等 AI 工具用自然语言操作项目
 - **离线上手** — SQLite 单文件数据库，零配置，秒级启动
 - **暗色主题** — Cyber Blue 主色调，Neon Green 完成态，专为开发者优化
 
 ## 快速开始
+
+### 本地开发
 
 ```bash
 # 1. 安装依赖
@@ -30,17 +32,28 @@ npm install
 # 2. 初始化数据库 & 填充示例数据
 npm run db:seed
 
-# 3. 启动开发服务器
-npm run dev:server   # API + WebSocket → http://localhost:3000
+# 3. 启动开发服务器 (API + WebSocket → :3000)
+npm run dev:server
 ```
 
-然后在另一个终端启动前端：
+另一个终端启动前端：
 
 ```bash
 npm run dev:web      # React 前端 → http://localhost:5173
 ```
 
-打开浏览器访问 `http://localhost:5173`，即可看到预填充的示例项目。
+### Docker 部署
+
+```bash
+# 要求: Docker + Docker Compose
+# 若 Docker Hub 不可达，需配置镜像加速 /etc/docker/daemon.json
+sudo dockerd &>/tmp/dockerd.log &   # 若 dockerd 未运行
+docker compose up -d --build
+```
+
+- Web 前端 → `:80`（nginx 代理 `/api` `/ws` → server:3000）
+- API Server → `:3000`
+- MCP Server → `:3100`
 
 ## 架构
 
@@ -97,7 +110,7 @@ omniplan-js/
 | `POST` | `/api/projects` | 创建项目 |
 | `GET/PATCH/DELETE` | `/api/projects/:id` | 项目 CRUD |
 | `GET` | `/api/projects/:pid/targets` | 目标列表 (含统计) |
-| `GET` | `/api/targets/:tid/tasks?status=&week_start=` | 任务列表 (可筛选) |
+| `GET` | `/api/targets/:tid/tasks?status=&start_date=` | 任务列表 (可筛选) |
 | `PATCH` | `/api/tasks/:id` | 更新任务 (支持乐观锁) |
 | `POST` | `/api/tasks/:id/dependencies` | 添加任务依赖 |
 | `POST` | `/api/bulk/tasks` | 批量更新任务 |
@@ -154,12 +167,12 @@ npm run db:migrate     # 执行数据库迁移
 ## 部署
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 - API Server → `:3000`
-- Web Frontend → `:80`
-- MCP Server → stdio
+- Web Frontend → `:80` (nginx 代理)
+- MCP Server → `:3100`
 
 ## 技术栈
 

@@ -14,9 +14,14 @@ router.get('/stats', validateQuery(StatsQuerySchema), (req, res) => {
   }
 });
 
-router.get('/timeline', validateQuery(TimelineQuerySchema), (req, res) => {
+router.get('/timeline', (req, res) => {
+  const pid = req.query.project_id as string | undefined;
+  if (pid && !/^prj_\w{8}$/.test(pid)) {
+    res.status(400).json({ success: false, error: 'Invalid project_id format' });
+    return;
+  }
   try {
-    const data = getTimeline(req.query.project_id as string);
+    const data = getTimeline(pid || undefined);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(err.statusCode || 500).json({ success: false, error: err.message });

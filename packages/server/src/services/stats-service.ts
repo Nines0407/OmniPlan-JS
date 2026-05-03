@@ -30,27 +30,38 @@ export function getStats(projectId?: string, targetId?: string): ProjectStats | 
   return { targets: [] };
 }
 
-export function getTimeline(projectId: string): TimelineData {
+export function getTimeline(projectId?: string): TimelineData {
+  const projectFilter = projectId ? 'AND t.project_id = ?' : 'AND p.is_archived = 0';
+
   const tasks = db.prepare(`
     SELECT tk.id, tk.name, tk.target_id, t.name as target_name,
+           t.project_id, p.name as project_name, p.color as project_color,
            tk.start_date, tk.duration_days, tk.status, tk.progress,
            u.display_name as assignee_name
     FROM tasks tk
     JOIN targets t ON tk.target_id = t.id
+    JOIN projects p ON t.project_id = p.id
     LEFT JOIN users u ON tk.assignee_id = u.id
-    WHERE t.project_id = ? AND tk.start_date IS NOT NULL
-    ORDER BY tk.start_date ASC
-  `).all(projectId);
+    WHERE tk.start_date IS NOT NULL ${projectFilter}
+    ORDER BY p.name, tk.start_date ASC
+  `).all(...(projectId ? [projectId] : []));
 
-  const milestones = db.prepare('SELECT id, name, due_date, status FROM milestones WHERE project_id = ? ORDER BY due_date ASC').all(projectId);
+  const milestones = db.prepare(`
+    SELECT m.id, m.name, m.project_id, m.due_date, m.status
+    FROM milestones m
+    JOIN projects p ON m.project_id = p.id
+    WHERE ${projectId ? 'm.project_id = ?' : 'p.is_archived = 0'}
+    ORDER BY m.due_date ASC
+  `).all(...(projectId ? [projectId] : []));
 
+  const depFilter = projectId ? 'AND t.project_id = ?' : '';
   const dependencies = db.prepare(`
     SELECT td.task_id, td.dependency_id, td.dependency_type
     FROM task_dependencies td
     JOIN tasks tk ON td.task_id = tk.id
     JOIN targets t ON tk.target_id = t.id
-    WHERE t.project_id = ?
-  `).all(projectId);
+    WHERE 1=1 ${depFilter}
+  `).all(...(projectId ? [projectId] : []));
 
   return {
     tasks: tasks as TimelineData['tasks'],

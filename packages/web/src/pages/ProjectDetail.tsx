@@ -17,7 +17,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 export function ProjectDetail() {
   const { pid } = useParams<{ pid: string }>();
   const { currentProject, loadProject } = useProjectStore();
-  const { targets, loading, loadTargets, addTarget, editTarget } = useTargetStore();
+  const { targets, loading, loadTargets, addTarget, editTarget, removeTarget } = useTargetStore();
   const { isAuthenticated } = useAuthStore();
   const { addToast } = useUiStore();
   const [showCreate, setShowCreate] = useState(false);
@@ -41,6 +41,18 @@ export function ProjectDetail() {
       setNewPriority('medium');
       setNewDuration(undefined);
       setShowCreate(false);
+    } catch (err: any) {
+      addToast(err.message, 'error');
+    }
+  };
+
+  const handleDeleteTarget = async (e: React.MouseEvent, id: string, name: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Delete goal "${name}" and all its tasks?`)) return;
+    try {
+      await removeTarget(id);
+      addToast('Goal deleted', 'success');
     } catch (err: any) {
       addToast(err.message, 'error');
     }
@@ -123,8 +135,17 @@ export function ProjectDetail() {
           <Link
             key={t.id}
             to={`/projects/${pid}/targets/${t.id}`}
-            className="p-5 bg-surface-card rounded-lg border border-gray-800 hover:border-cyber-blue/50 transition group"
+            className="p-5 bg-surface-card rounded-lg border border-gray-800 hover:border-cyber-blue/50 transition group relative"
           >
+            {isAuthenticated && (
+              <button
+                onClick={(e) => handleDeleteTarget(e, t.id, t.name)}
+                className="absolute top-3 right-3 text-gray-600 hover:text-danger-red text-xs opacity-0 group-hover:opacity-100 transition"
+                title="Delete"
+              >
+                &#x2715;
+              </button>
+            )}
             <h3 className="text-lg font-semibold text-white mb-3 group-hover:text-cyber-blue">
               {t.name}
             </h3>
@@ -143,28 +164,12 @@ export function ProjectDetail() {
                     <option key={p} value={p} className="bg-surface text-white">{p}</option>
                   ))}
                 </select>
-                <div className="flex items-center gap-1 text-xs text-gray-400">
-                  <input
-                    type="number"
-                    min="0"
-                    value={t.duration ?? ''}
-                    placeholder="days"
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      const val = e.target.value ? Number(e.target.value) : null;
-                      editTarget(t.id, { duration: val });
-                    }}
-                    className="w-14 px-1.5 py-0.5 bg-surface border border-gray-700 rounded text-white text-xs text-center"
-                  />
-                  <span>days</span>
-                </div>
               </div>
             )}
 
             {!isAuthenticated && (
-              <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
+              <div className="mb-3 text-xs text-gray-500">
                 <span>{t.priority}</span>
-                {t.duration != null && <span>{t.duration} days</span>}
               </div>
             )}
 

@@ -24,6 +24,9 @@ export interface TimelineData {
     name: string;
     target_id: string;
     target_name: string;
+    project_id: string;
+    project_name: string;
+    project_color?: string;
     start_date: string;
     duration_days: number;
     status: string;
@@ -33,6 +36,7 @@ export interface TimelineData {
   milestones: Array<{
     id: string;
     name: string;
+    project_id: string;
     due_date: string;
     status: string;
   }>;

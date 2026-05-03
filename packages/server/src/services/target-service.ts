@@ -73,5 +73,7 @@ export function updateTarget(id: string, data: UpdateTargetInput, expectedVersio
 
 export function deleteTarget(id: string): void {
   getTarget(id);
+  db.prepare('DELETE FROM task_dependencies WHERE task_id IN (SELECT id FROM tasks WHERE target_id = ?)').run(id);
+  db.prepare('DELETE FROM tasks WHERE target_id = ?').run(id);
   db.prepare('DELETE FROM targets WHERE id = ?').run(id);
 }

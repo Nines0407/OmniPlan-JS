@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getTimeline } from '../api/stats';
-import type { TimelineData } from '@omniplan/shared';
+import { useMilestoneStore } from '../stores/milestoneStore';
+import { useAuthStore } from '../stores/authStore';
+import { useUiStore } from '../stores/uiStore';
+import type { TimelineData, Milestone } from '@omniplan/shared';
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -21,6 +24,9 @@ export function Timeline() {
   const { pid } = useParams<{ pid: string }>();
   const [data, setData] = useState<TimelineData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { removeMilestone } = useMilestoneStore();
+  const { isAuthenticated } = useAuthStore();
+  const { addToast } = useUiStore();
 
   useEffect(() => {
     if (!pid) return;
@@ -31,6 +37,19 @@ export function Timeline() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [pid]);
+
+  const handleMilestoneDelete = async (id: string) => {
+    if (!confirm('Delete this milestone?')) return;
+    try {
+      await removeMilestone(id);
+      addToast('Milestone deleted', 'success');
+      if (pid) {
+        getTimeline(pid).then((res) => { if (res?.data) setData(res.data); });
+      }
+    } catch (err: any) {
+      addToast(err.message, 'error');
+    }
+  };
 
   if (loading) {
     return (
@@ -153,18 +172,55 @@ export function Timeline() {
             </div>
           ))}
 
-          {/* Milestones */}
+          {/* Milestone markers on chart */}
+          {data.milestones.length > 0 && (
+            <div className="flex items-center mt-2">
+              <div className="w-48 flex-shrink-0 text-sm text-yellow-400 font-medium">&#x25C6; Milestones</div>
+              <div className="flex-1 flex relative h-6">
+                {allDates.map((_, i) => (
+                  <div key={i} className="flex-1 border-l border-gray-800/20" />
+                ))}
+                {data.milestones.map((m) => {
+                  const mDate = new Date(m.due_date);
+                  const offset = dateDiff(minDate, mDate);
+                  if (offset < 0 || offset >= totalDays) return null;
+                  return (
+                    <div
+                      key={m.id}
+                      className="absolute top-0 -translate-x-1/2"
+                      style={{ left: `${((offset) / totalDays) * 100}%` }}
+                      title={`${m.name}: ${m.due_date} (${m.status})`}
+                    >
+                      <span className={`text-base ${m.status === 'completed' ? 'text-neon-green' : m.status === 'cancelled' ? 'text-gray-600' : 'text-yellow-400'}`}>
+                        &#x25C6;
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Milestones list */}
           {data.milestones.length > 0 && (
             <div className="mt-8">
               <h3 className="text-sm text-gray-500 font-medium mb-3">Milestones</h3>
               {data.milestones.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 mb-2">
+                <div key={m.id} className="flex items-center gap-3 mb-2 group">
                   <span className="text-yellow-400 text-lg">&diams;</span>
                   <span className="text-sm text-white">{m.name}</span>
                   <span className="text-xs text-gray-500">{m.due_date}</span>
                   <span className={`text-xs px-2 py-0.5 rounded ${m.status === 'completed' ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-700 text-gray-400'}`}>
                     {m.status}
                   </span>
+                  {isAuthenticated && (
+                    <button
+                      onClick={() => handleMilestoneDelete(m.id)}
+                      className="text-gray-600 hover:text-danger-red text-xs opacity-0 group-hover:opacity-100 transition"
+                    >
+                      &#x2715;
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

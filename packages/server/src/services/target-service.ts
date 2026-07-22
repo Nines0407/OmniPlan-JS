@@ -1,6 +1,7 @@
 import { db } from '../db/connection';
 import type { Target, TargetStats, CreateTargetInput, UpdateTargetInput } from '@omniplan/shared';
 import { NotFoundError, ConflictError } from './project-service';
+import { broadcast } from '../websocket/index';
 
 function generateId(prefix: string): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -36,7 +37,13 @@ export function getTargetStats(id: string): TargetStats {
   const stats = db.prepare('SELECT * FROM target_stats WHERE target_id = ?').get(id) as {
     total_tasks: number; done_tasks: number; completion_rate: number; overdue_tasks: number;
   } | undefined;
-  return { ...target, ...stats } as TargetStats;
+  return {
+    ...target,
+    total_tasks: stats?.total_tasks ?? 0,
+    done_tasks: stats?.done_tasks ?? 0,
+    completion_rate: stats?.completion_rate ?? 0,
+    overdue_tasks: stats?.overdue_tasks ?? 0,
+  } as TargetStats;
 }
 
 export function createTarget(projectId: string, data: CreateTargetInput): Target {
@@ -68,7 +75,10 @@ export function updateTarget(id: string, data: UpdateTargetInput, expectedVersio
   vals.push(now);
   vals.push(id);
   db.prepare(`UPDATE targets SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
-  return getTarget(id);
+  const updated = getTarget(id);
+  const stats = getTargetStats(id);
+  broadcast({ type: 'target.updated', entity: stats });
+  return updated;
 }
 
 export function deleteTarget(id: string): void {

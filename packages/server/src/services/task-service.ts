@@ -1,6 +1,7 @@
 import { db } from '../db/connection';
 import type { Task, TaskDependency, CreateTaskInput, UpdateTaskInput, TaskStatus, TaskPriority } from '@omniplan/shared';
 import { NotFoundError, ConflictError } from './project-service';
+import { broadcast } from '../websocket/index';
 
 function generateId(prefix: string): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -65,7 +66,9 @@ export function createTask(targetId: string, data: CreateTaskInput): Task {
     JSON.stringify(data.tags || []),
     now, now,
   );
-  return getTask(id);
+  const task = getTask(id);
+  broadcast({ type: 'task.created', entity: task });
+  return task;
 }
 
 export function updateTask(id: string, data: UpdateTaskInput, expectedVersion?: string): Task {
@@ -92,22 +95,25 @@ export function updateTask(id: string, data: UpdateTaskInput, expectedVersion?: 
   vals.push(now);
   vals.push(id);
   db.prepare(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
-  return getTask(id);
+  const updated = getTask(id);
+  broadcast({ type: 'task.updated', entity: updated });
+  return updated;
 }
 
 export function deleteTask(id: string): void {
   getTask(id);
   db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+  broadcast({ type: 'task.deleted', id });
 }
 
-export function addDependency(taskId: string, dependencyId: string, dependencyType: string = 'finish_to_start'): TaskDependency {
+export function addDependency(taskId: string, dependencyId: string, dependencyType: TaskDependency['dependency_type'] = 'finish_to_start'): TaskDependency {
   getTask(taskId);
   getTask(dependencyId);
   const id = generateId('dep');
   db.prepare(
     'INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type) VALUES (?, ?, ?, ?)',
   ).run(id, taskId, dependencyId, dependencyType);
-  return { id, task_id: taskId, dependency_id: dependencyId, dependency_type: dependencyType as TaskDependency['dependency_type'] };
+  return { id, task_id: taskId, dependency_id: dependencyId, dependency_type: dependencyType };
 }
 
 export function removeDependency(taskId: string, depId: string): void {
@@ -119,22 +125,29 @@ export function bulkUpdateTasks(taskIds: string[], changes: { status?: TaskStatu
   const now = new Date().toISOString();
   const updated: Task[] = [];
 
-  const updateStmt = db.prepare('UPDATE tasks SET status = COALESCE(?, status), progress = COALESCE(?, progress), start_date = COALESCE(?, start_date), updated_at = ? WHERE id = ?');
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  if ('status' in changes) { sets.push('status = ?'); vals.push(changes.status ?? null); }
+  if ('progress' in changes) { sets.push('progress = ?'); vals.push(changes.progress ?? null); }
+  if ('start_date' in changes) { sets.push('start_date = ?'); vals.push(changes.start_date ?? null); }
+
+  if (sets.length === 0) return updated;
+  sets.push('updated_at = ?');
+  vals.push(now);
+
+  const updateStmt = db.prepare(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`);
 
   db.transaction(() => {
     for (const taskId of taskIds) {
       const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as Task | undefined;
       if (!task) continue;
-      updateStmt.run(
-        changes.status || null,
-        changes.progress !== undefined ? changes.progress : null,
-        changes.start_date !== undefined ? changes.start_date : null,
-        now,
-        taskId,
-      );
+      updateStmt.run(...vals, taskId);
       updated.push(getTask(taskId));
     }
   })();
 
+  if (updated.length > 0) {
+    broadcast({ type: 'bulk.updated', entities: updated });
+  }
   return updated;
 }

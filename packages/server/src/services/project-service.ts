@@ -1,5 +1,6 @@
 import { db } from '../db/connection';
 import type { Project, CreateProjectInput, UpdateProjectInput } from '@omniplan/shared';
+import { broadcast } from '../websocket/index';
 
 function generateId(prefix: string): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -61,7 +62,9 @@ export function updateProject(id: string, data: UpdateProjectInput, expectedVers
   vals.push(now);
   vals.push(id);
   db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
-  return getProject(id);
+  const updated = getProject(id);
+  broadcast({ type: 'project.updated', entity: updated });
+  return updated;
 }
 
 export function deleteProject(id: string): void {

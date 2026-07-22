@@ -14,6 +14,6 @@ export function login(username: string) {
   return post<ApiResponse<AuthResult>>('/api/auth/login', { username });
 }
 
-export function verifyToken() {
-  return get<ApiResponse<{ user: User }>>('/api/auth/verify');
+export function verifyToken(signal?: AbortSignal) {
+  return get<ApiResponse<{ user: User }>>('/api/auth/verify', signal);
 }

@@ -19,7 +19,11 @@ export function App() {
   const { subscribe, unsubscribe } = useWsStore();
 
   useEffect(() => {
-    checkToken();
+    const controller = new AbortController();
+    checkToken(controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, [checkToken]);
 
   useEffect(() => {

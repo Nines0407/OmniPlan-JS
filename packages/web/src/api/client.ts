@@ -65,8 +65,8 @@ async function request<T = unknown>(url: string, options: FetchOptions = {}): Pr
   }
 }
 
-export function get<T = unknown>(url: string): Promise<T> {
-  return request<T>(url);
+export function get<T = unknown>(url: string, signal?: AbortSignal): Promise<T> {
+  return request<T>(url, signal ? { signal } : {});
 }
 
 export function post<T = unknown>(url: string, body: unknown): Promise<T> {

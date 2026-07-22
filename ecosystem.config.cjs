@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'omniplan-server',
       cwd: './packages/server',
-      script: 'npx',
-      args: 'tsx src/index.ts',
+      script: './node_modules/.bin/tsx',
+      args: 'src/index.ts',
       interpreter: 'none',
       env: {
         PORT: '3001',
@@ -24,8 +24,8 @@ module.exports = {
     {
       name: 'omniplan-web',
       cwd: './packages/web',
-      script: 'npx',
-      args: 'vite --host 0.0.0.0 --port 1101',
+      script: './node_modules/.bin/vite',
+      args: '--host 0.0.0.0 --port 1101',
       interpreter: 'none',
       env: {
         VITE_SERVER_URL: 'http://localhost:3001',

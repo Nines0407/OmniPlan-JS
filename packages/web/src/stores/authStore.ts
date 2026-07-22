@@ -14,7 +14,7 @@ interface AuthState {
   logout: () => void;
   setToken: (token: string) => void;
   setUser: (user: User) => void;
-  checkToken: () => Promise<void>;
+  checkToken: (signal?: AbortSignal) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -25,18 +25,23 @@ export const useAuthStore = create<AuthState>((set) => ({
   loadingAuth: true,
   error: null,
 
-  checkToken: async () => {
+  checkToken: async (signal?: AbortSignal) => {
     const token = localStorage.getItem('omniplan_token');
     if (!token) {
       set({ loadingAuth: false, isAuthenticated: false });
       return;
     }
     try {
-      const res = await verifyToken();
+      const res = await verifyToken(signal);
       set({ user: res.data.user, isAuthenticated: true, loadingAuth: false, token });
-    } catch {
-      localStorage.removeItem('omniplan_token');
-      set({ user: null, token: null, isAuthenticated: false, loadingAuth: false });
+    } catch (err: any) {
+      if (signal?.aborted) return;
+      if (err.status === 401) {
+        localStorage.removeItem('omniplan_token');
+        set({ user: null, token: null, isAuthenticated: false, loadingAuth: false });
+      } else {
+        set({ loadingAuth: false, isAuthenticated: !!localStorage.getItem('omniplan_token') });
+      }
     }
   },
 
@@ -81,7 +86,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !(window as any).__omniplan_auth_listener) {
+  (window as any).__omniplan_auth_listener = true;
   window.addEventListener('auth:invalid', () => {
     useAuthStore.getState().logout();
   });

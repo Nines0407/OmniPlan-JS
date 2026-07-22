@@ -177,12 +177,12 @@ server.tool(
 
 server.tool(
   'list_tasks',
-  '列出目标下的所有任务，可按状态和周次过滤',
+  '列出目标下的所有任务，可按状态和日期过滤',
   {
     target_id: z.string().describe('所属目标 ID'),
     status: z.string().optional().describe('按状态过滤: todo, in_progress, review, done, cancelled'),
     assignee_id: z.string().optional().describe('按负责人 ID 过滤'),
-    week_start: z.string().optional().describe('按周次过滤 (YYYY-MM-DD)'),
+    start_date: z.string().optional().describe('按起始日期过滤 (YYYY-MM-DD)'),
   },
   async ({ target_id, ...filters }) => {
     const params = new URLSearchParams();
@@ -213,8 +213,8 @@ server.tool(
     name: z.string().describe('任务名称'),
     description: z.string().optional().describe('任务描述'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('优先级'),
-    week_start: z.string().optional().describe('周起始日期 (YYYY-MM-DD)'),
-    duration_weeks: z.number().optional().describe('持续周数'),
+    start_date: z.string().optional().describe('起始日期 (YYYY-MM-DD)'),
+    duration_days: z.number().optional().describe('持续天数'),
     assignee_id: z.string().optional().describe('负责人 ID'),
   },
   async ({ target_id, ...data }) => {
@@ -235,9 +235,9 @@ server.tool(
     progress: z.number().min(0).max(100).optional().describe('进度百分比'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('新优先级'),
     name: z.string().optional().describe('新任务名称'),
-    week_start: z.string().optional().describe('新周起始日期'),
+    start_date: z.string().optional().describe('新起始日期'),
     assignee_id: z.string().optional().describe('新负责人 ID'),
-    duration_weeks: z.number().optional().describe('新持续周数'),
+    duration_days: z.number().optional().describe('新持续天数'),
     description: z.string().optional().describe('新描述'),
   },
   async ({ task_id, ...changes }) => {
@@ -301,12 +301,12 @@ server.tool(
 
 server.tool(
   'bulk_update_tasks',
-  '批量更新任务状态/进度/周次',
+  '批量更新任务状态/进度/日期',
   {
     task_ids: z.array(z.string()).describe('要更新的任务 ID 列表'),
     status: z.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']).optional().describe('新状态'),
     progress: z.number().min(0).max(100).optional().describe('进度百分比'),
-    week_start: z.string().optional().describe('新周起始日期'),
+    start_date: z.string().optional().describe('新起始日期'),
   },
   async ({ task_ids, ...changes }) => {
     const filtered: Record<string, unknown> = {};

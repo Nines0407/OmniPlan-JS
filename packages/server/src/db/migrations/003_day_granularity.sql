@@ -16,3 +16,18 @@ SELECT
 FROM tasks
 WHERE start_date IS NOT NULL
 GROUP BY start_date, target_id;
+
+DROP VIEW IF EXISTS target_stats;
+CREATE VIEW IF NOT EXISTS target_stats AS
+SELECT
+  t.id AS target_id,
+  COUNT(tk.id) AS total_tasks,
+  COUNT(CASE WHEN tk.status = 'done' THEN 1 END) AS done_tasks,
+  CASE
+    WHEN COUNT(tk.id) = 0 THEN 0
+    ELSE ROUND(CAST(COUNT(CASE WHEN tk.status = 'done' THEN 1 END) AS REAL) / COUNT(tk.id) * 100, 1)
+  END AS completion_rate,
+  COUNT(CASE WHEN tk.start_date < date('now') AND tk.status != 'done' THEN 1 END) AS overdue_tasks
+FROM targets t
+LEFT JOIN tasks tk ON tk.target_id = t.id
+GROUP BY t.id;

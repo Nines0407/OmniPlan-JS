@@ -1,7 +1,7 @@
 /**
  * Unit tests for server services
  */
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
@@ -9,7 +9,9 @@ import path from 'path';
 const TEST_DB_PATH = path.resolve(process.cwd(), 'data', 'test.db');
 
 function setupTestDb() {
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
+  const dir = path.dirname(TEST_DB_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  try { if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH); } catch (_) {}
   const db = new Database(TEST_DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
@@ -29,6 +31,10 @@ describe('Project Service', () => {
     // Override db connection to use test db
     process.env.NODE_ENV = 'test';
     db = setupTestDb();
+  });
+
+  afterAll(() => {
+    if (db) db.close();
   });
 
   it('should create and list projects', () => {
@@ -58,10 +64,9 @@ describe('Task Service', () => {
 
   beforeAll(() => {
     db = setupTestDb();
-    // Setup minimal data
-    db.prepare('INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)').run('u1', 'user1', 'U1');
-    db.prepare('INSERT INTO projects (id, owner_id, name) VALUES (?, ?, ?)').run('p1', 'u1', 'Project');
-    db.prepare('INSERT INTO targets (id, project_id, name) VALUES (?, ?, ?)').run('t1', 'p1', 'Target');
+    db.prepare('INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)').run('u2', 'user2', 'U2');
+    db.prepare('INSERT INTO projects (id, owner_id, name) VALUES (?, ?, ?)').run('p2', 'u2', 'Project2');
+    db.prepare('INSERT INTO targets (id, project_id, name) VALUES (?, ?, ?)').run('t2', 'p2', 'Target2');
   });
 
   it('should create a task with defaults', () => {
@@ -69,7 +74,7 @@ describe('Task Service', () => {
     db.prepare(
       `INSERT INTO tasks (id, target_id, name, status, priority, progress, tags, created_at, updated_at)
        VALUES (?, ?, ?, 'todo', 'medium', 0, '[]', ?, ?)`,
-    ).run('tsk_1', 't1', 'Test Task', now, now);
+    ).run('tsk_1', 't2', 'Test Task', now, now);
 
     const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get('tsk_1') as any;
     expect(task.name).toBe('Test Task');
@@ -95,7 +100,7 @@ describe('Task Service', () => {
     const now = new Date().toISOString();
     db.prepare(
       `INSERT INTO tasks (id, target_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-    ).run('tsk_2', 't1', 'Dependent Task', now, now);
+    ).run('tsk_2', 't2', 'Dependent Task', now, now);
 
     db.prepare(
       'INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type) VALUES (?, ?, ?, ?)',
@@ -105,6 +110,10 @@ describe('Task Service', () => {
     expect(deps).toHaveLength(1);
     expect((deps[0] as any).dependency_type).toBe('finish_to_start');
   });
+
+  afterAll(() => {
+    if (db) db.close();
+  });
 });
 
 describe('Target Stats View', () => {
@@ -112,23 +121,27 @@ describe('Target Stats View', () => {
 
   beforeAll(() => {
     db = setupTestDb();
-    db.prepare('INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)').run('u1', 'user1', 'U1');
-    db.prepare('INSERT INTO projects (id, owner_id, name) VALUES (?, ?, ?)').run('p1', 'u1', 'Project');
-    db.prepare('INSERT INTO targets (id, project_id, name) VALUES (?, ?, ?)').run('t1', 'p1', 'Target');
+    db.prepare('INSERT INTO users (id, username, display_name) VALUES (?, ?, ?)').run('u3', 'user3', 'U3');
+    db.prepare('INSERT INTO projects (id, owner_id, name) VALUES (?, ?, ?)').run('p3', 'u3', 'Project3');
+    db.prepare('INSERT INTO targets (id, project_id, name) VALUES (?, ?, ?)').run('t3', 'p3', 'Target3');
   });
 
   it('should calculate completion rate correctly', () => {
     const now = new Date().toISOString();
     db.prepare(
       `INSERT INTO tasks (id, target_id, name, status, progress, created_at, updated_at) VALUES (?, ?, ?, 'done', 100, ?, ?)`,
-    ).run('tsk_a', 't1', 'Done Task', now, now);
+    ).run('tsk_a', 't3', 'Done Task', now, now);
     db.prepare(
       `INSERT INTO tasks (id, target_id, name, status, progress, created_at, updated_at) VALUES (?, ?, ?, 'todo', 0, ?, ?)`,
-    ).run('tsk_b', 't1', 'Todo Task', now, now);
+    ).run('tsk_b', 't3', 'Todo Task', now, now);
 
-    const stats = db.prepare('SELECT * FROM target_stats WHERE target_id = ?').get('t1') as any;
+    const stats = db.prepare('SELECT * FROM target_stats WHERE target_id = ?').get('t3') as any;
     expect(stats.total_tasks).toBe(2);
     expect(stats.done_tasks).toBe(1);
     expect(stats.completion_rate).toBe(50);
+  });
+
+  afterAll(() => {
+    if (db) db.close();
   });
 });

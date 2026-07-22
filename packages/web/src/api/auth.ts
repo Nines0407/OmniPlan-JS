@@ -1,4 +1,4 @@
-import { post } from './client';
+import { get, post } from './client';
 import type { User, ApiResponse } from '@omniplan/shared';
 
 interface AuthResult {
@@ -12,4 +12,8 @@ export function register(username: string, displayName: string) {
 
 export function login(username: string) {
   return post<ApiResponse<AuthResult>>('/api/auth/login', { username });
+}
+
+export function verifyToken() {
+  return get<ApiResponse<{ user: User }>>('/api/auth/verify');
 }

@@ -1,26 +1,44 @@
 import { create } from 'zustand';
 import type { User } from '@omniplan/shared';
-import { login as apiLogin, register as apiRegister } from '../api/auth';
+import { login as apiLogin, register as apiRegister, verifyToken } from '../api/auth';
 
 interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
+  loadingAuth: boolean;
   error: string | null;
   login: (username: string) => Promise<void>;
   register: (username: string, displayName: string) => Promise<void>;
   logout: () => void;
   setToken: (token: string) => void;
   setUser: (user: User) => void;
+  checkToken: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: localStorage.getItem('omniplan_token'),
-  isAuthenticated: !!localStorage.getItem('omniplan_token'),
+  isAuthenticated: false,
   loading: false,
+  loadingAuth: true,
   error: null,
+
+  checkToken: async () => {
+    const token = localStorage.getItem('omniplan_token');
+    if (!token) {
+      set({ loadingAuth: false, isAuthenticated: false });
+      return;
+    }
+    try {
+      const res = await verifyToken();
+      set({ user: res.data.user, isAuthenticated: true, loadingAuth: false, token });
+    } catch {
+      localStorage.removeItem('omniplan_token');
+      set({ user: null, token: null, isAuthenticated: false, loadingAuth: false });
+    }
+  },
 
   login: async (username: string) => {
     set({ loading: true, error: null });
@@ -62,3 +80,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 }));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('auth:invalid', () => {
+    useAuthStore.getState().logout();
+  });
+}

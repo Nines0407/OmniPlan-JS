@@ -46,6 +46,10 @@ async function request<T = unknown>(url: string, options: FetchOptions = {}): Pr
     const data = await res.json();
 
     if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem('omniplan_token');
+        window.dispatchEvent(new CustomEvent('auth:invalid'));
+      }
       throw new ApiError(data.error || 'Request failed', res.status, data.details);
     }
 

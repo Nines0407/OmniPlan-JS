@@ -8,6 +8,8 @@ import request from 'supertest';
 import express from 'express';
 import cors from 'cors';
 
+import '../db/migrate.js';
+
 import authRoutes from '../routes/auth.ts';
 import projectRoutes from '../routes/projects.ts';
 import targetRoutes from '../routes/targets.ts';
@@ -67,6 +69,30 @@ describe('Integration Tests', () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({ username: `nonexistent_${Date.now()}` });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('should verify valid API key', async () => {
+    const res = await request(app)
+      .get('/api/auth/verify')
+      .set('Authorization', `Bearer ${apiKey}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.user).toBeDefined();
+    expect(res.body.data.user.username).toBe(testUser);
+  });
+
+  it('should reject invalid API key for verify', async () => {
+    const res = await request(app)
+      .get('/api/auth/verify')
+      .set('Authorization', 'Bearer invalid_key');
+
+    expect(res.status).toBe(401);
+  });
+
+  it('should reject verify without auth header', async () => {
+    const res = await request(app).get('/api/auth/verify');
 
     expect(res.status).toBe(401);
   });

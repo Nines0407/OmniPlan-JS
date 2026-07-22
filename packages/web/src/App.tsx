@@ -14,7 +14,13 @@ import { useWsStore } from './stores/wsStore';
 
 export function App() {
   const token = useAuthStore((s) => s.token);
+  const loadingAuth = useAuthStore((s) => s.loadingAuth);
+  const checkToken = useAuthStore((s) => s.checkToken);
   const { subscribe, unsubscribe } = useWsStore();
+
+  useEffect(() => {
+    checkToken();
+  }, [checkToken]);
 
   useEffect(() => {
     if (token) {
@@ -23,6 +29,14 @@ export function App() {
       unsubscribe();
     }
   }, [token, subscribe, unsubscribe]);
+
+  if (loadingAuth) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="animate-pulse text-cyber-blue">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>

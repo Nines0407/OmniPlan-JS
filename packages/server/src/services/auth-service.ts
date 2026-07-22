@@ -19,6 +19,17 @@ export function generateApiKey(): string {
   return result;
 }
 
+export function createApiKey(userId: string): string {
+  const apiKey = generateApiKey();
+  db.prepare('INSERT INTO api_keys (api_key, user_id) VALUES (?, ?)').run(apiKey, userId);
+  return apiKey;
+}
+
+export function verifyApiKey(apiKey: string): string | null {
+  const row = db.prepare('SELECT user_id FROM api_keys WHERE api_key = ?').get(apiKey) as { user_id: string } | undefined;
+  return row?.user_id ?? null;
+}
+
 export function registerUser(username: string, displayName: string): User {
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) {

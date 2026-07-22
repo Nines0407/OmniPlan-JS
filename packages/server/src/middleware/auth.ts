@@ -1,10 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-
-const API_KEYS = new Map<string, string>(); // apiKey -> userId
-
-export function registerApiKey(userId: string, apiKey: string): void {
-  API_KEYS.set(apiKey, userId);
-}
+import { verifyApiKey } from '../services/auth-service';
 
 export function authRequired(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
@@ -13,7 +8,7 @@ export function authRequired(req: Request, res: Response, next: NextFunction): v
     return;
   }
   const apiKey = authHeader.slice(7);
-  const userId = API_KEYS.get(apiKey);
+  const userId = verifyApiKey(apiKey);
   if (!userId) {
     res.status(401).json({ success: false, error: 'Invalid API key' });
     return;
@@ -26,7 +21,7 @@ export function authOptional(req: Request, res: Response, next: NextFunction): v
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const apiKey = authHeader.slice(7);
-    const userId = API_KEYS.get(apiKey);
+    const userId = verifyApiKey(apiKey);
     if (userId) {
       (req as AuthenticatedRequest).userId = userId;
     }

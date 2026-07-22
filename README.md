@@ -44,14 +44,32 @@ npm run dev:web      # React 前端 → http://localhost:5173
 
 ### Docker 部署
 
+**前置要求:** Docker + Docker Compose
+
 ```bash
-# 要求: Docker + Docker Compose
-# 若 Docker Hub 不可达，需配置镜像加速 /etc/docker/daemon.json
-sudo dockerd &>/tmp/dockerd.log &   # 若 dockerd 未运行
 docker compose up -d --build
 ```
 
-- Web 前端 → `:80`（nginx 代理 `/api` `/ws` → server:3000）
+**镜像加速配置**（若 Docker Hub 不可达）：
+
+```bash
+# 创建 /etc/docker/daemon.json，填入镜像加速地址
+{
+  "registry-mirrors": ["https://docker.m.daocloud.io"]
+}
+sudo systemctl restart docker
+```
+
+**npm 镜像配置**（构建时自动使用）：
+容器构建阶段通过 Dockerfile 配置了 `registry.npmmirror.com` 镜像源，无需手动干预。
+
+**数据持久化**：
+数据库文件（`./data/omniplan.db`）和备份（`./backups/`）通过 volume 映射到宿主机，`git pull` 更新后重建容器不会丢失数据。
+
+**web 端口**：
+默认映射到 8080 端口（避免与系统 Apache 80 端口冲突），可在 `docker-compose.yml` 中修改：
+
+- Web 前端 → `:8080`（nginx 代理 `/api` `/ws` → server:3000）
 - API Server → `:3000`
 - MCP Server → `:3100`
 
@@ -171,7 +189,7 @@ docker compose up -d --build
 ```
 
 - API Server → `:3000`
-- Web Frontend → `:80` (nginx 代理)
+- Web Frontend → `:8080` (nginx 代理)
 - MCP Server → `:3100`
 
 ## 技术栈

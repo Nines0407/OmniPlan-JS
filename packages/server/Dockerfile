@@ -1,10 +1,14 @@
 FROM node:22-alpine AS base
 
 FROM base AS builder
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/server/package.json packages/server/
+ENV npm_config_build_from_source=true
+ENV npm_config_nodedir=/usr/local
+RUN npm config set registry https://registry.npmmirror.com
 RUN npm ci --workspaces --if-present
 COPY packages/shared/src packages/shared/src
 COPY tsconfig.json ./

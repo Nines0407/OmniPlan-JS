@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/web/package.json packages/web/
+RUN npm config set registry https://registry.npmmirror.com
 RUN npm ci --workspaces --if-present
 COPY packages/shared/src packages/shared/src
 COPY tsconfig.json ./

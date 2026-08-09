@@ -444,6 +444,25 @@ server.tool(
   },
 );
 
+
+server.tool(
+  "get_server_time",
+  "获取服务器当前时间（吪时区）",
+  {},
+  async () => {
+    const now = new Date();
+    return formatResult({
+      success: true,
+      data: {
+        iso: now.toISOString(),
+        unix: Math.floor(now.getTime() / 1000),
+        local: now.toString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    });
+  },
+);
+
 // ─── Startup ─────────────────────────────────────────────────
 
 async function main() {

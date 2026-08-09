@@ -111,7 +111,7 @@ omniplan-js/
 │   │       ├── stores/       # Zustand 状态管理 (auth/project/target/task/ws/ui)
 │   │       ├── api/          # API 请求封装 (client + 各资源模块)
 │   │       └── styles/       # 全局样式
-│   ├── mcp/             # MCP Server (27 Tools for AI)
+│   ├── mcp/             # MCP Server (28 Tools for AI)
 │   └── shared/          # 共享 TypeScript 类型 + Zod DTO
 ├── docs/                # 开发文档
 ├── docker-compose.yml   # 一键部署
@@ -191,6 +191,13 @@ docker compose up -d --build
 - API Server → `:3000`
 - Web Frontend → `:8080` (nginx 代理)
 - MCP Server → `:3100`
+
+
+## 更新日志
+
+### 2026-08-09
+- **MCP**: 新增 `get_server_time` 工具 — 获取服务器当前时间 (ISO / Unix / 本地时间 / 时区)
+- **部署**: 新增 ZeroTier 降级策略脚本，主 IP 不可达时自动切换 ZeroTier 隧道连接
 
 ## 技术栈
 
